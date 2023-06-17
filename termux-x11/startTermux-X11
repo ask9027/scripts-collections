@@ -9,7 +9,7 @@ RESET=`tput sgr0`
 trap ctrl_c INT
 export TERMUX_X11_DEBUG=1
 user=$1
-x11repo="$PREFIX/etc/apt/sources.list.d/x11.list"
+x11repo="${PREFIX}/etc/apt/sources.list.d/x11.list"
 x11="/data/data/com.termux/files/usr/bin/termux-x11 -ac :0"
 
 function ctrl_c(){
@@ -66,10 +66,19 @@ function startX11(){
         $x11
     fi
 }
+function checkX11Repo(){
+    if [ ! -f $x11repo ]; then
+        echo "${REDB}x11-repo is not enabled, enabling now...${RESET}"
+        apt update && apt install x11-repo -y
+	checkTermuxX11
+    else
+        checkTermuxX11
+    fi
+}
 
 function checkTermuxX11(){
     if ! command -v termux-x11 &> /dev/null; then
-        echo "Termux-x11 not installed"
+        echo "${REDB}Termux-x11 not installed${RESET}"
         echo "Installing it now..."
         apt update && apt install termux-x11-nightly -y
         startX11
@@ -82,4 +91,4 @@ echo -e "${REDB}Clearing old logcat$(logcat -c)${RESET}"
 clear_tmp
 checkPulse
 echo -e "${GREEN}Starting Termux-x11${RESET}"
-checkTermuxX11
+checkX11Repo
