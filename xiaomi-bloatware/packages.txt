@@ -1,0 +1,13 @@
+com.miui.yellowpage
+com.miui.weather2
+com.xiaomi.midrop
+com.opera.browser.afin
+com.xiaomi.payment
+com.google.android.apps.subscriptions.red
+com.xiaomi.mipicks
+com.facebook.services
+com.facebook.appmanager
+com.facebook.system
+com.mi.globalminusscreen
+com.miui.android.fashiongallery
+cn.wps.xiaomi.abroad.lite
