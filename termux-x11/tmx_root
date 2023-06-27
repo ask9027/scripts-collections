@@ -1,0 +1,39 @@
+#!/bin/sh
+
+RED='\e[31m'
+GREEN='\e[32m'
+BLUE='\e[34m'
+RESET='\e[0m'
+
+export TERMUX_X11_DEBUG=1
+
+function run_as_root(){
+    enforce="setenforce 1"
+    permissive="setenforce 0"
+    getenforce="getenforce"
+
+    echo "${BLUE}Running Termux-x11 as root${RESET}"
+    echo -e "${RED}SELinux is $($getenforce)${RESET}"
+    echo -e "${RED}setting up SELinux to $($permissive)$($getenforce)${RESET}"
+
+    export CLASSPATH=$(/system/bin/pm path com.termux.x11 | cut -d: -f2)
+    /system/bin/app_process / com.termux.x11.CmdEntryPoint :0
+
+    echo -e "${RED}setting up SELinux to $($enforce)$($getenforce)${RESET}"
+}
+
+trap ctrl_c INT
+
+function ctrl_c(){
+    echo ""
+    clear_tmp
+    printf "${GREEN}Leaving...${RESET}"; echo
+}
+
+function clear_tmp(){
+    echo -e "${BLUE}Clearing tmp dir"
+    rm -rf ${TMPDIR}/{.*,*}
+}
+
+clear_tmp
+run_as_root
