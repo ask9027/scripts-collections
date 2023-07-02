@@ -12,7 +12,7 @@ function run_as_root(){
     permissive="setenforce 0"
     getenforce="getenforce"
 
-    echo "${BLUE}Running Termux-x11 as root${RESET}"
+    echo -e "${BLUE}Running Termux-x11 as root${RESET}"
     echo -e "${RED}SELinux is $($getenforce)${RESET}"
     echo -e "${RED}setting up SELinux to $($permissive)$($getenforce)${RESET}"
 
