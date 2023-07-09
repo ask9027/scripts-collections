@@ -41,7 +41,7 @@ function checkPulse() {
 
 function startX11() {
     echo "${BLUE}Running Termux-x11 as non-root${RESET}"
-    "$($x11 -xstartup xfce4-session)"
+    $x11
 }
 
 function checkX11Repo() {

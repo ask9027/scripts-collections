@@ -1,0 +1,29 @@
+#!/bin/bash
+
+echo "run as root"
+
+echo "deb http://deb.debian.org/debian sid main" > /etc/apt/sources.list.d/debian.list
+
+echo "install debian-sid-key"
+apt-key adv --keyserver keyserver.ubuntu.com --recv-keys
+
+echo "# Note: 2 blank lines are required between entries
+Package: *
+Pin: release a=eoan
+Pin-Priority: 500
+
+Package: *
+Pin: origin "deb.debian.org"
+Pin-Priority: 300
+
+# Pattern includes 'chromium', 'chromium-browser' and similarly
+# named dependencies:
+Package: chromium*
+Pin: origin "deb.debian.org"
+Pin-Priority: 700" > /etc/apt/preferences.d/chromium.pref
+
+
+echo "install chromium"
+
+apt update
+apt install chromium
