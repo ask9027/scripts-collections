@@ -2,10 +2,11 @@
 
 echo "run as root"
 
-echo "deb http://deb.debian.org/debian sid main" > /etc/apt/sources.list.d/debian.list
+echo "deb [signed-by=/etc/apt/trusted.gpg] http://deb.debian.org/debian sid main" > /etc/apt/sources.list.d/debian.list
 
 echo "install debian-sid-key"
-apt-key adv --keyserver keyserver.ubuntu.com --recv-keys
+apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 0E98404D386FA1D9
+apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 6ED0E7B82643E131
 
 echo "# Note: 2 blank lines are required between entries
 Package: *
