@@ -7,10 +7,10 @@ CYAN=$(tput setaf 012)
 RESET=$(tput sgr0)
 
 trap ctrl_c INT
-extra=$1
+extra="$@"
 export TERMUX_X11_DEBUG=1 
 x11repo="${PREFIX}/etc/apt/sources.list.d/x11.list"
-x11="${PREFIX}/bin/termux-x11 :0"
+x11="${PREFIX}/bin/termux-x11 :0 ${extra}"
 
 check_server(){
     if [ ! -z "$(pidof app_process)" ]; then
@@ -50,11 +50,7 @@ function checkPulse() {
 
 function startX11() {
     echo "${BLUE}Running Termux-x11 as non-root${RESET}"
-    if [ ! -z "$extra" ]; then
-        $x11 $extra
-    else
-        $x11
-    fi
+    $x11
 }
 
 function checkX11Repo() {
