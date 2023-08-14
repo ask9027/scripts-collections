@@ -27,4 +27,4 @@ Pin-Priority: 700" > /etc/apt/preferences.d/chromium.pref
 echo "install chromium"
 
 apt update
-apt install chromium
+apt -t sid install chromium

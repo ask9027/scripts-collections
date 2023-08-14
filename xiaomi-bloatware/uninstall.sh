@@ -1,16 +1,16 @@
 echo "Uninstalling Unwanted Packages"
 
 filename="packages.txt"
-start=1
+index=1
 pacnumbers=$(wc -l <$filename)
 
-function removepac() {
-	while [ $start -le $pacnumbers ]; do
-		pac=$(sed -e "${start}q;d" $filename)
-		printf "No.$start: $pac Uninstalling ..."
+function removepackegs() {
+	while [ $index -le $pacnumbers ]; do
+		pac=$(sed -e "${index}q;d" $filename)
+		printf "No.$index: $pac Uninstalling ..."
 		echo
 		sudo pm uninstall --user 0 -k $pac
-		((++start))
+		((++index))
 	done
 }
 
@@ -19,13 +19,13 @@ function checkroot() {
 	read r
 	if [ $r = "y" ] || [ $r = "Y" ]; then
 		if [ -f "$PREFIX/bin/sudo" ]; then
-			removepac
+			removepackegs
 		else
 			printf "Install tsu first.\nDo you want to install it? (y/N): "
 			read p
 			if [ $p = "y" ] || [ $p = "Y" ]; then
 				pkg install tsu
-				removepac
+				removepackegs
 			else
 				printf "use ADB"
 				echo

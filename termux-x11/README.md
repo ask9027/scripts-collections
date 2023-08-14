@@ -7,24 +7,26 @@ First move these files to `bin`
 ```bash
 git clone https://github.com/ask9027/scripts-collections.git
 cd $PWD/scripts-collections/termux-x11
-mv $PWD/tmx* $PREFIX/bin/
-chmod +x $PREFIX/bin/tmx*
+mv $PWD/tmx $PREFIX/bin/
+chmod +x $PREFIX/bin/tmx
 ```
 
 ### Run with root
-Run `tmx_root` like this
+Run `tmx` like this
 ```bash
 # fix audio ( first install pulseaudio)
 pulseaudio --start --load="module-native-protocol-tcp auth-ip-acl=127.0.0.1 auth-anonymous=1" --exit-idle-time=-1
-su -c $PREFIX/bin/tmx_root
-```
 
-it will run termux-x11 with root if your device rooted
+su # Enter in root
+/data/data/com.termux/files/usr/bin/tmx #full path or tmx
+```
 
 ### Run without root
 Just run as usual
 ```bash
 tmx # dont need to run pulseaudio `tmx` already start it
-# or use 
+```
+# or use
+```bash
 $PREFIX/bin/tmx
 ```
