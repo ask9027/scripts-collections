@@ -15,16 +15,17 @@ chmod +x $PREFIX/bin/tmx
 Run `tmx` like this
 ```bash
 # fix audio ( first install pulseaudio)
-pulseaudio --start --load="module-native-protocol-tcp auth-ip-acl=127.0.0.1 auth-anonymous=1" --exit-idle-time=-1
-
-su # Enter in root
-/data/data/com.termux/files/usr/bin/tmx #full path or tmx
+if want to use mic in termux-x11, need to install termux-api from https://github.com/termux/termux-api
+pulseaudio --start --load="module-native-protocol-tcp auth-ip-acl=127.0.0.1 auth-anonymous=1" --exit-idle-time=-1 -D
+```
+```bash
+su -c /data/data/com.termux/files/usr/bin/tmx 	# full path of tmx
 ```
 
 ### Run without root
 Just run as usual
 ```bash
-tmx # dont need to run pulseaudio `tmx` already start it
+tmx
 ```
 # or use
 ```bash

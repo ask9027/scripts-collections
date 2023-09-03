@@ -53,6 +53,8 @@ usage(){
 	echo " -h, --help			Display this Help message."
 	echo " -help				Display X Server Help message."
 	echo " --debug			Use this if want Verbose output."
+	echo " --sound			Use this if want audio in Termux-X11. not work while in root"
+	echo " to use in root use 'su -c $PREFIX/bin/tmx' or 'su -c <path of tmx>'."
 	printf " Other options will execute in x server, use -help for x server options.${RESET}"; echo
 }
 
@@ -62,6 +64,14 @@ handle_options(){
 			-h | --help)
 				usage
 				exit 0
+				;;
+			--sound)
+				if ! is_root; then
+					start_audio
+				else
+					printf "${RED}root dont support pulseaudio.${RESET}"; echo
+				fi
+				break
 				;;
 			--debug)
 				export TERMUX_X11_DEBUG=1
@@ -107,10 +117,10 @@ setup_root(){
 	printf "${REDB}SELinux is $($getenforce)${RESET}"; echo
 	printf "${REDB}Setting up SELinux to $($permissive)$($getenforce)${RESET}"; echo
 
-	# set envs
-    # export TMPDIR=/tmp # path of chroot tmp if want use chroot
-	# it will use termux-app TMPDIR
-    export XKB_CONFIG_ROOT="/data/local/tmp/ubuntu/usr/share/X11/xkb"
+	## set envs
+	export CHROOT=/data/local/tmp/ubuntu
+#    export TMPDIR=${CHROOT}/tmp
+    export XKB_CONFIG_ROOT="${CHROOT}/usr/share/X11/xkb"
     export CLASSPATH="$(/system/bin/pm path com.termux.x11 | cut -d: -f2)"
 	/system/bin/app_process / com.termux.x11.CmdEntryPoint $extra
 }
@@ -123,7 +133,6 @@ startX11() {
 		$(logcat -c)
 		setup_root
 	else
-		start_audio
 		echo "Running Termux-X11"
 		setup
     fi
