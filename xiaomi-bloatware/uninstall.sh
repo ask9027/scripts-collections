@@ -9,7 +9,7 @@ function removepackegs() {
 		pac=$(sed -e "${index}q;d" $filename)
 		printf "No.$index: $pac Uninstalling ..."
 		echo
-		if [ $1 = "1" ] || [ $1 = "2" ]; then
+		if [ $1 = "1" ]; then
 			sudo pm uninstall --user 0 -k $pac
 		else
 			adb shell pm uninstall --user 0 -k $pac
