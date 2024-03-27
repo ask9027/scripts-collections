@@ -112,7 +112,7 @@ setup(){
     fi
     if [ ! -f $loader ]; then
         echo "termux-x11 not installed, imstalling now."
-        apt update && apt install termux-x11-nightly -y
+        apt update && apt install termux-x11-* -y
     fi
     export CLASSPATH=$loader
     unset LD_LIBRARY_PATH LD_PRELOAD
