@@ -1,21 +1,22 @@
 #!/data/data/com.termux/files/usr/bin/bash
-set -e -u
+set -u -e
 
 set_color(){
-	REDB='\033[41m'
-	RED='\033[31m'
-	GREEN='\033[32m'
-	BLUE='\033[34m'
-	CYAN='\033[36m'
-	RESET='\033[0m'
+    REDB='\033[41m'
+    RED='\033[31m'
+    GREEN='\033[32m'
+    BLUE='\033[34m'
+    CYAN='\033[36m'
+    RESET='\033[0m'
 }
 
 trap ctrl_c INT
 extra=""
+CHROOT=""
 
 check_server(){
     if [ ! -z "$(pidof app_process)" ]; then
-    	local server_pid=$(pidof app_process)
+        local server_pid=$(pidof app_process)
         printf "${RED}XServer is Already running at ${server_pid}"; echo
         printf "${BLUE}Terminating XServer of ${server_pid}$(kill $server_pid)${RESET}"; echo
     fi
@@ -23,68 +24,78 @@ check_server(){
 
 ctrl_c() {
     echo ""
-	if is_root; then
-		rm -rf ${TMPDIR}/.X*
-        printf "${REDB}Setting up SELinux to $(su -c setenforce 1)$(su -c getenforce)${RESET}"; echo
+    if is_root; then
+        rm -rf ${TMPDIR}/.X*
+        printf "${REDB}Setting up SELinux to $(setenforce 1)$(getenforce)${RESET}"; echo
     else
-		printf "${RED}Killing pulseaudio$(pulseaudio -k 2>/dev/null)${RESET}"; echo
-	fi
-	printf "${GREEN}Leaving...${RESET}"; echo
+        printf "${RED}Killing pulseaudio$(pulseaudio -k 2>/dev/null)${RESET}"; echo
+    fi
+    printf "${GREEN}Leaving...${RESET}"; echo
 }
 
 setup_audio() {
     if ! command -v "pulseaudio" &>/dev/null; then
         echo "pulseaudio not found"
-		echo "installing it now."
+        echo "installing it now."
         apt update && apt install pulseaudio -y
     fi
 }
 
 start_audio(){
-	setup_audio
-	printf "${CYAN}Starting pulseaudio${RESET}"; echo
-	printf "${RED}Killing pulseaudio if running$(pulseaudio -k 2>/dev/null)${RESET}"; echo
-	pulseaudio --start --load="module-native-protocol-tcp auth-ip-acl=127.0.0.1 auth-anonymous=1" --exit-idle-time=-1 -D
+    setup_audio
+    printf "${CYAN}Starting pulseaudio${RESET}"; echo
+    printf "${RED}Killing pulseaudio if running$(pulseaudio -k 2>/dev/null)${RESET}"; echo
+    pulseaudio --start --load="module-native-protocol-tcp auth-ip-acl=127.0.0.1 auth-anonymous=1" --exit-idle-time=-1 -D
 }
 
 usage(){
-	printf "${CYAN}Usage: $0 [OPTIONS]"
-	echo "Options:"
-	echo " -h, --help			Display this Help message."
-	echo " -help				Display X Server Help message."
-	echo " --debug			Use this if want Verbose output."
-	echo " --sound			Use this if want audio in Termux-X11. not work while in root"
-	echo " to use in root use 'su -c $PREFIX/bin/tmx' or 'su -c <path of tmx>'."
-	printf " Other options will execute in x server, use -help for x server options.${RESET}"; echo
+    printf "${CYAN}Usage: $0 [OPTIONS]"; echo
+    echo "Options:"
+    echo " -h or --help		Display this Help message."
+    echo " -d or --debug		Use this if want Verbose output."
+    echo " -s or --sound		Use this if want audio in Termux-X11. not work while in root"
+    echo " -x or --xserver	Use this if want to pass X Server Options"
+    printf " to use in root use 'su -c $PREFIX/bin/tmx' or 'su -c <path of tmx>'.${RESET}"; echo
 }
 
 handle_options(){
-	while (($# >= 1)); do
-		case $1 in
-			-h | --help)
-				usage
-				exit 0
-				;;
-			--sound)
-				if ! is_root; then
-					start_audio
-				else
-					printf "${RED}root dont support pulseaudio.${RESET}"; echo
-				fi
-				break
-				;;
-			--debug)
-				export TERMUX_X11_DEBUG=1
-				echo "Verbose Enabled"
-				;;
-			*)
-				extra=$@
-				printf "X Server Options: ${CYAN}${extra}${RESET}"; echo
-				break
-				;;
-		esac
-		shift
-	done
+    while test $# -gt 0; do
+        case $1 in
+            -h|--help)
+                usage
+                return 1;
+            ;;
+            -s|--sound)
+                if ! is_root; then
+                    start_audio
+                else
+                    printf "${RED}root dont support pulseaudio.${RESET}"; echo
+                fi
+            ;;
+            -d|--debug)
+                export TERMUX_X11_DEBUG=1
+                echo "Verbose Enabled"
+            ;;
+            -c|--chroot)
+                shift
+                CHROOT="$1"
+                echo "CHROOT dir ${CHROOT}"
+                #shift
+            ;;
+            -x|--xserver)
+                shift
+                extra="$1"
+                printf "X Server Options: ${CYAN}${extra}${RESET}"; echo
+                #shift
+            ;;
+            *)
+                echo "$1 is not a recognized"
+                usage
+                return 1;
+            ;;
+        esac
+        shift
+    done
 }
 
 is_root(){
@@ -92,49 +103,47 @@ is_root(){
 }
 
 setup(){
-	local PREFIX=/data/data/com.termux/files/usr
+    local PREFIX=/data/data/com.termux/files/usr
     local x11repo="${PREFIX}/etc/apt/sources.list.d/x11.list"
     local loader="${PREFIX}/libexec/termux-x11/loader.apk"
     if [ ! -f $x11repo ]; then
-		echo "x11-repo is not enabled, enabling now."
+        echo "x11-repo is not enabled, enabling now."
         apt update && apt install x11-repo -y
     fi
     if [ ! -f $loader ]; then
         echo "termux-x11 not installed, imstalling now."
-        apt update && apt install termux-x11* -y
+        apt update && apt install termux-x11-nightly -y
     fi
-	export CLASSPATH=$loader
-	unset LD_LIBRARY_PATH LD_PRELOAD
-	/system/bin/app_process / com.termux.x11.Loader $extra
+    export CLASSPATH=$loader
+    unset LD_LIBRARY_PATH LD_PRELOAD
+    /system/bin/app_process / com.termux.x11.Loader $extra
 }
 
 setup_root(){
-	## set SeLinux to permissive to work with root
+    ## set SeLinux to permissive to work with root
     local enforce="setenforce 1"
     local permissive="setenforce 0"
     local getenforce="getenforce"
-
-	printf "${REDB}SELinux is $($getenforce)${RESET}"; echo
-	printf "${REDB}Setting up SELinux to $($permissive)$($getenforce)${RESET}"; echo
-
-	## set envs
-	export CHROOT=/data/local/tmp/ubuntu
-#    export TMPDIR=${CHROOT}/tmp
+    
+    printf "${REDB}SELinux is $($getenforce)${RESET}"; echo
+    printf "${REDB}Setting up SELinux to $($permissive)$($getenforce)${RESET}"; echo
+    
+    ## set env
     export XKB_CONFIG_ROOT="${CHROOT}/usr/share/X11/xkb"
     export CLASSPATH="$(/system/bin/pm path com.termux.x11 | cut -d: -f2)"
-	/system/bin/app_process / com.termux.x11.CmdEntryPoint $extra
+    /system/bin/app_process / com.termux.x11.CmdEntryPoint $extra
 }
 
 startX11() {
     printf "${GREEN}Starting Termux-x11${RESET}"; echo
-	printf "${REDB}Clearing old logcat$(logcat -c)${RESET}"; echo
-	if is_root; then
-		echo "Running Termux-X11 With ROOT"
-		$(logcat -c)
-		setup_root
-	else
-		echo "Running Termux-X11"
-		setup
+    printf "${REDB}Clearing old logcat$(logcat -c)${RESET}"; echo
+    if is_root; then
+        echo "Running Termux-X11 With ROOT"
+        $(logcat -c)
+        setup_root
+    else
+        echo "Running Termux-X11"
+        setup
     fi
 }
 
