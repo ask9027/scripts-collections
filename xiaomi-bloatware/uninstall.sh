@@ -11,8 +11,10 @@ function removepackegs() {
         echo
         if [ $1 = "1" ]; then
             sudo pm uninstall --user 0 -k $pac
-        else
+        elif [ $1 = "2" ]; then
             adb shell pm uninstall --user 0 -k $pac
+        else
+            echo "Invalid selection!"
         fi
         ((++index))
     done
@@ -46,7 +48,7 @@ function select_method() {
     read r
     if [ $r = "1" ]; then
         checkroot
-        elif [ $r = "2" ]; then
+    elif [ $r = "2" ]; then
         if [ -f "$PREFIX/bin/adb" ]; then
             echo "$(adb devices)"
             removepackegs 2
