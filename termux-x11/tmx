@@ -12,7 +12,6 @@ set_color() {
 
 trap ctrl_c INT
 extra=""
-CHROOT=""
 
 check_server() {
     if [ ! -z "$(pidof app_process)" ]; then
@@ -90,6 +89,7 @@ handle_options() {
             shift
             CHROOT="$1"
             echo "CHROOT dir ${CHROOT}"
+	    export XKB_CONFIG_ROOT="${CHROOT}/usr/share/X11/xkb"
             #shift
             ;;
         -x | --xserver)
@@ -127,7 +127,7 @@ setup() {
     fi
     export CLASSPATH=$loader
     unset LD_LIBRARY_PATH LD_PRELOAD
-    /system/bin/app_process / com.termux.x11.Loader $extra
+    /system/bin/app_process -Xnoimage-dex2oat / com.termux.x11.Loader $extra
 }
 
 setup_root() {
@@ -142,9 +142,8 @@ setup_root() {
     echo
 
     ## set env.
-    export XKB_CONFIG_ROOT="${CHROOT}/usr/share/X11/xkb"
     export CLASSPATH="$(/system/bin/pm path com.termux.x11 | cut -d: -f2)"
-    /system/bin/app_process / com.termux.x11.CmdEntryPoint $extra
+    /system/bin/app_process -Xnoimage-dex2oat / com.termux.x11.CmdEntryPoint $extra
 }
 
 startX11() {
