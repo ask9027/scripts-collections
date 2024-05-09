@@ -12,7 +12,6 @@ bootstrap_distribution() {
 			--arch=${arch} \
 			--variant=minbase \
 			--components="main,contrib" \
-			--include="ca-certificates,locales" \
 			"${dist_version}" \
 			"${WORKDIR}/debian-${dist_version}-$(translate_arch "$arch")" \
 			http://deb.debian.org/debian/
