@@ -122,7 +122,7 @@ setup() {
         apt update && apt install x11-repo -y
     fi
     if [ ! -f $loader ]; then
-        echo "termux-x11 not installed, imstalling now."
+        echo "termux-x11 not installed, installing now."
         apt update && apt install termux-x11-* -y
     fi
     export CLASSPATH=$loader
