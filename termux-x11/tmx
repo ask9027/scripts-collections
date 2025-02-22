@@ -12,14 +12,21 @@ set_color() {
 
 trap ctrl_c INT
 extra=""
+server_pid=""
 
 check_server() {
-    if [ ! -z "$(pidof app_process)" ]; then
-        local server_pid=$(pidof app_process)
+    if is_root; then
+        [ ! -z "$(pidof com.termux-x11)" ] && server_pid=$(pidof com.termux-x11)
+    else
+        [ ! -z "$(pgrep com.termux-x11)" ] && server_pid=$(pgrep com.termux-x11)
+    fi
+    if [ ! -z $server_pid ]; then
         printf "${RED}XServer is Already running at ${server_pid}"
         echo
-        printf "${BLUE}Terminating XServer of ${server_pid}$(kill $server_pid)${RESET}"
-        echo
+        printf "${BLUE}To terminate XServer run this command \`kill $server_pid\`${RESET}";echo
+        exit 0
+    else
+        echo "Other XServer Not running."
     fi
 }
 
@@ -127,7 +134,7 @@ setup() {
     fi
     export CLASSPATH=$loader
     unset LD_LIBRARY_PATH LD_PRELOAD
-    /system/bin/app_process -Xnoimage-dex2oat / com.termux.x11.Loader $extra
+    /system/bin/app_process -Xnoimage-dex2oat / --nice-name="com.termux-x11" com.termux.x11.Loader $extra
 }
 
 setup_root() {
@@ -143,7 +150,7 @@ setup_root() {
 
     ## set env.
     export CLASSPATH="$(/system/bin/pm path com.termux.x11 | cut -d: -f2)"
-    /system/bin/app_process -Xnoimage-dex2oat / com.termux.x11.CmdEntryPoint $extra
+    /system/bin/app_process -Xnoimage-dex2oat / --nice-name="com.termux-x11" com.termux.x11.CmdEntryPoint $extra
 }
 
 startX11() {
