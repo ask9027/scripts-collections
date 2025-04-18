@@ -38,4 +38,4 @@ echo "Selected video format: $video_format"
 echo "Selected audio format: $audio_format"
 
 # Download and merge
-yt-dlp -f "$video_format+$audio_format" "$url" -o "%(title)s.%(ext)s"
+yt-dlp -f "$video_format+$audio_format" "$url"
