@@ -14,8 +14,8 @@ mkdir -p tmp
 cd tmp || exit 1
 
 # Get video IDs (handles both single and playlist)
-video_ids=$(yt-dlp --flat-playlist --print "%(id)s" "$url" 2>/dev/null)
-[ -z "$video_ids" ] && video_ids=$(yt-dlp --get-id "$url")
+video_ids=$(yt-dlp --flat-playlist --print "%(id)s" "$url" -4 2>/dev/null)
+[ -z "$video_ids" ] && video_ids=$(yt-dlp --get-id "$url" -4)
 
 # Count total videos
 total=$(echo "$video_ids" | wc -w)
@@ -26,7 +26,7 @@ for video_id in $video_ids; do
   echo -e "\n${CYAN}[${count}/${total}] Processing: $full_url${RESET}"
 
   # Fetch metadata
-  info_json=$(yt-dlp -J "$full_url" 2>/dev/null)
+  info_json=$(yt-dlp -J "$full_url" -4 2>/dev/null)
   if [ -z "$info_json" ]; then
     echo -e "${RED}Failed to fetch info for $video_id${RESET}"
     ((count++))
@@ -52,10 +52,11 @@ for video_id in $video_ids; do
   # Select best audio-only format
   audio_format=$(echo "$formats" | jq -r '
     .[] |
-    select(
-      .vcodec == "none" and .acodec != "none" and
-      (.ext == "m4a" or .ext == "webm") and
-      (.protocol != "m3u8" and .protocol != "m3u8_native")
+	select(
+ 	  .vcodec == "none" and .acodec != "none" and
+	  (.ext == "m4a" or .ext == "webm") and
+	  (.protocol != "m3u8" and .protocol != "m3u8_native") and
+	  (.format_id | test("(?i)drc") | not)
     ) |
     {id: .format_id, tbr: .tbr} |
     @base64' | \
@@ -73,9 +74,9 @@ for video_id in $video_ids; do
   fi
 
   # Download and merge
-  yt-dlp -f "${video_format}+${audio_format}" -o "%(title)s.%(ext)s" "$full_url" || {
+  yt-dlp -f "${video_format}+${audio_format}" -o "%(upload_date)s %(title)s.%(ext)s" "$full_url" -4 || {
     echo -e "${RED}Title-based filename failed. Trying with video ID...${RESET}"
-    yt-dlp -f "${video_format}+${audio_format}" -o "%(id)s.%(ext)s" "$full_url"
+    yt-dlp -f "${video_format}+${audio_format}" -o "%(upload_date)s %(title).85s.%(ext)s" "$full_url" -4
   }
 
   echo -e "${GREEN}Downloaded video ${count}/${total}${RESET}"
