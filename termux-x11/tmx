@@ -15,6 +15,7 @@ trap ctrl_c INT
 extra=""
 server_pid=""
 ROOT_MODE=$(id -u)
+export XKB_CONFIG_ROOT="/data/data/com.termux/files/usr/share/xkeyboard-config-2/"
 
 check_server() {
     if [ "$ROOT_MODE" -eq 0 ]; then
