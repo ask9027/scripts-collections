@@ -12,6 +12,7 @@ bootstrap_distribution() {
 			--arch=${arch} \
 			--variant=minbase \
 			--components="main,contrib" \
+   			--include="nano,libncurses-dev,gawk,flex,bison,openssl,libssl-dev,dkms,libelf-dev,libudev-dev,libpci-dev,libiberty-dev,autoconf,llvm,ccache,gcc-arm-linux-gnueabi,clang,lld,bc"
 			"${dist_version}" \
 			"${WORKDIR}/debian-${dist_version}-$(translate_arch "$arch")" \
 			http://deb.debian.org/debian/
