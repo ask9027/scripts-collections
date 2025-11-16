@@ -1,0 +1,57 @@
+name: Build gen_snapshot ARM64 (Debian)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+
+    steps:
+    - name: Install base dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y git curl python3 unzip pkg-config \
+          clang ninja-build build-essential \
+          gcc-aarch64-linux-gnu g++-aarch64-linux-gnu \
+          libc6-dev-arm64-cross
+
+    - name: Install depot_tools
+      run: |
+        git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git
+        echo "$PWD/depot_tools" >> $GITHUB_PATH
+
+    - name: Clone Flutter Engine (latest)
+      run: |
+        git clone https://github.com/flutter/engine.git --depth=1
+        cd engine
+        git submodule update --init --recursive
+
+    - name: Run gclient sync (needed for DEPS)
+      run: |
+        cd engine
+        gclient sync
+
+    - name: Configure GN for ARM64 Linux
+      run: |
+        cd engine/src
+        ./flutter/tools/gn \
+          --runtime-mode=release \
+          --linux-cpu=arm64
+
+    - name: Generate Ninja build files
+      run: |
+        cd engine/src
+        gn gen out/linux_arm64_release \
+          --args='target_cpu="arm64" is_debug=false is_release=true'
+
+    - name: Build gen_snapshot (ARM64)
+      run: |
+        cd engine/src
+        ninja -C out/linux_arm64_release gen_snapshot
+
+    - name: Upload gen_snapshot Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: gen_snapshot-arm64
+        path: engine/src/out/linux_arm64_release/gen_snapshot
