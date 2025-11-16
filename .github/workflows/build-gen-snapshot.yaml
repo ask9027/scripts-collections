@@ -18,13 +18,20 @@ jobs:
       run: |
         git clone https://github.com/flutter/engine.git --depth=1
         cd engine
-        ./flutter/tools/gn --linux-cpu=arm64 --runtime-mode=release
+        git submodule update --init --recursive
+
+    - name: Run GN configuration
+      run: |
+        cd engine/src
+        ./flutter/tools/gn \
+          --runtime-mode=release \
+          --linux-cpu=arm64
 
     - name: Generate build files
       run: |
         cd engine/src
-        python3 ./build/gen.py
-        gn gen out/arm64-release --args='target_cpu="arm64" is_debug=false is_release=true'
+        gn gen out/arm64-release \
+           --args='target_cpu="arm64" is_debug=false is_release=true'
 
     - name: Build gen_snapshot
       run: |
