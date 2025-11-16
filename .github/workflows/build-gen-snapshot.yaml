@@ -1,0 +1,38 @@
+name: Build gen_snapshot for ARM64 (Debian)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+
+    steps:
+    - name: Install dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y git curl python3 clang ninja-build pkg-config build-essential
+        sudo apt install -y libc6-dev-arm64-cross gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+
+    - name: Clone Flutter Engine
+      run: |
+        git clone https://github.com/flutter/engine.git --depth=1
+        cd engine
+        ./flutter/tools/gn --linux-cpu=arm64 --runtime-mode=release
+
+    - name: Generate build files
+      run: |
+        cd engine/src
+        python3 ./build/gen.py
+        gn gen out/arm64-release --args='target_cpu="arm64" is_debug=false is_release=true'
+
+    - name: Build gen_snapshot
+      run: |
+        cd engine/src
+        ninja -C out/arm64-release gen_snapshot
+
+    - name: Upload gen_snapshot Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: gen_snapshot-arm64
+        path: engine/src/out/arm64-release/gen_snapshot
