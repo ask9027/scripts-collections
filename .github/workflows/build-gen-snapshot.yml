@@ -17,7 +17,7 @@ jobs:
       run: |
         cat << 'EOF' > Dockerfile.gen_snapshot
         FROM ubuntu:22.04
-
+        
         ENV DEBIAN_FRONTEND=noninteractive
         
         # Install dependencies
@@ -37,18 +37,9 @@ jobs:
         # Clone Flutter monorepo (shallow)
         RUN git clone --depth 1 https://github.com/flutter/flutter.git /flutter
         
-        # Minimal gclient sync for engine only
-        RUN cd /flutter && \
-            cp scripts/standard.gclient .gclient && \
-            sed -i 's/deps_os/#deps_os/g' .gclient && \
-            gclient sync --no-history --shallow --with_branch_heads
-        
-        # Generate GN build files for ARM64 only
+        # Build gen_snapshot directly inside engine/src
         RUN cd /flutter/engine/src && \
-            ./flutter/tools/gn --runtime-mode=release --no-android --arm64
-        
-        # Build gen_snapshot
-        RUN cd /flutter/engine/src && \
+            ./flutter/tools/gn --runtime-mode=release --no-android --arm64 && \
             ninja -C out/host_release/gen_snapshot
         
         WORKDIR /flutter/engine/src/out/host_release
