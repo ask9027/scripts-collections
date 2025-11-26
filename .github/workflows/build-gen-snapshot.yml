@@ -40,7 +40,7 @@ jobs:
         # Build gen_snapshot directly inside engine/src
         RUN cd /flutter/engine/src && \
             # Linux ARM64 host build
-            ./flutter/tools/gn --runtime-mode=release --linux=arm64 && \
+            ./flutter/tools/gn --runtime-mode=release --target-os=linix --linux-cpu=arm64 && \
             ninja -C out/host_release/gen_snapshot
         
         WORKDIR /flutter/engine/src/out/host_release
