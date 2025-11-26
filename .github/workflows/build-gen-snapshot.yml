@@ -19,38 +19,40 @@ jobs:
         FROM ubuntu:22.04
 
         ENV DEBIAN_FRONTEND=noninteractive
-
+        
         RUN apt-get update && apt-get install -y \
           build-essential clang python3-dev git curl zip unzip \
           ninja-build pkg-config libglib2.0-dev libgtk-3-dev \
           libc6-dev-arm64-cross gcc-aarch64-linux-gnu g++-aarch64-linux-gnu \
-          ca-certificates && \
+          ca-certificates python3-pip && \
           rm -rf /var/lib/apt/lists/*
+        
+        RUN pip3 install --upgrade setuptools wheel
         
         RUN git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git /depot_tools \
             && echo 'export PATH=$PATH:/depot_tools' >> ~/.bashrc
         
         ENV PATH="/depot_tools:${PATH}"
         
-        # --- Important: Resolve engine revision dynamically ---
+        # --- Resolve Flutter Engine revision dynamically from engine.lock ---
         RUN git clone https://github.com/flutter/flutter.git /tmp/flutter && \
-            FLUTTER_ENGINE_HASH=$(cat /tmp/flutter/bin/internal/engine.version) && \
-            rm -rf /tmp/flutter && \
+            FLUTTER_ENGINE_HASH=$(grep -oP '(?<="engineRevision": ")[^"]+' /tmp/flutter/bin/internal/engine.lock) && \
             echo "Using engine revision: $FLUTTER_ENGINE_HASH" && \
             git clone https://github.com/flutter/engine.git /flutter && \
             cd /flutter && \
-            git checkout $FLUTTER_ENGINE_HASH
+            git checkout $FLUTTER_ENGINE_HASH && \
+            rm -rf /tmp/flutter
         
         RUN cd /flutter && \
             cp tools/gn/.gclient .gclient && \
             sed -i 's/deps_os/#deps_os/g' .gclient && \
-            gclient sync --no-history --shallow --with_branch_heads
+            gclient sync --no-history --shallow --with_branch_heads --verbose
         
         RUN cd /flutter/src && \
             ./flutter/tools/gn --runtime-mode=release --no-android --arm64
         
         RUN cd /flutter/src && \
-            ninja -C out/host_release/gen_snapshot
+            ninja -C out/host_release gen_snapshot
         
         WORKDIR /flutter/src/out/host_release
         CMD ["/bin/bash"]
