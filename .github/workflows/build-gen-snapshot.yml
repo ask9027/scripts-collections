@@ -20,41 +20,38 @@ jobs:
 
         ENV DEBIAN_FRONTEND=noninteractive
         
+        # Install dependencies
         RUN apt-get update && apt-get install -y \
-          build-essential clang python3-dev git curl zip unzip \
-          ninja-build pkg-config libglib2.0-dev libgtk-3-dev \
-          libc6-dev-arm64-cross gcc-aarch64-linux-gnu g++-aarch64-linux-gnu \
-          ca-certificates python3-pip && \
-          rm -rf /var/lib/apt/lists/*
+            build-essential clang python3-dev git curl zip unzip \
+            ninja-build pkg-config libglib2.0-dev libgtk-3-dev \
+            libc6-dev-arm64-cross gcc-aarch64-linux-gnu g++-aarch64-linux-gnu \
+            ca-certificates python3-pip && \
+            rm -rf /var/lib/apt/lists/*
         
         RUN pip3 install --upgrade setuptools wheel
         
-        RUN git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git /depot_tools \
-            && echo 'export PATH=$PATH:/depot_tools' >> ~/.bashrc
-        
+        # Install depot_tools
+        RUN git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git /depot_tools
         ENV PATH="/depot_tools:${PATH}"
         
-        # --- Resolve Flutter Engine revision dynamically from engine.lock ---
-        RUN git clone https://github.com/flutter/flutter.git /tmp/flutter && \
-            FLUTTER_ENGINE_HASH=$(grep -oP '(?<="engineRevision": ")[^"]+' /tmp/flutter/bin/internal/engine.lock) && \
-            echo "Using engine revision: $FLUTTER_ENGINE_HASH" && \
-            git clone https://github.com/flutter/engine.git /flutter && \
-            cd /flutter && \
-            git checkout $FLUTTER_ENGINE_HASH && \
-            rm -rf /tmp/flutter
+        # Clone Flutter monorepo (shallow)
+        RUN git clone --depth 1 https://github.com/flutter/flutter.git /flutter
         
+        # Minimal gclient sync for engine only
         RUN cd /flutter && \
-            cp tools/gn/.gclient .gclient && \
+            cp scripts/standard.gclient .gclient && \
             sed -i 's/deps_os/#deps_os/g' .gclient && \
-            gclient sync --no-history --shallow --with_branch_heads --verbose
+            gclient sync --no-history --shallow --with_branch_heads
         
-        RUN cd /flutter/src && \
+        # Generate GN build files for ARM64 only
+        RUN cd /flutter/engine/src && \
             ./flutter/tools/gn --runtime-mode=release --no-android --arm64
         
-        RUN cd /flutter/src && \
-            ninja -C out/host_release gen_snapshot
+        # Build gen_snapshot
+        RUN cd /flutter/engine/src && \
+            ninja -C out/host_release/gen_snapshot
         
-        WORKDIR /flutter/src/out/host_release
+        WORKDIR /flutter/engine/src/out/host_release
         CMD ["/bin/bash"]
         EOF
 
