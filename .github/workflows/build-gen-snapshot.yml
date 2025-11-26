@@ -16,11 +16,13 @@ jobs:
     - name: Create Dockerfile.gen_snapshot
       run: |
         cat << 'EOF' > Dockerfile.gen_snapshot
+        # Base image
         FROM ubuntu:22.04
         
         ENV DEBIAN_FRONTEND=noninteractive
+        ENV PATH="/depot_tools:${PATH}"
         
-        # Install dependencies
+        # Install build dependencies
         RUN apt-get update && apt-get install -y \
             build-essential clang python3-dev git curl zip unzip \
             ninja-build pkg-config libglib2.0-dev libgtk-3-dev \
@@ -32,18 +34,24 @@ jobs:
         
         # Install depot_tools
         RUN git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git /depot_tools
-        ENV PATH="/depot_tools:${PATH}"
         
         # Clone Flutter monorepo (shallow)
         RUN git clone --depth 1 https://github.com/flutter/flutter.git /flutter
         
-        # Build gen_snapshot directly inside engine/src
+        # Minimal gclient sync to fetch engine dependencies (Skia, Dart, etc.)
+        RUN cd /flutter && \
+            echo 'solutions = [{"name": "engine","url": "https://github.com/flutter/flutter.git","managed": False,"custom_deps": {}}]' > .gclient && \
+            gclient sync --with_branch_heads --no-history --shallow
+        
+        # Build gen_snapshot for Linux ARM64 host
         RUN cd /flutter/engine/src && \
-            # Linux ARM64 host build
-            ./flutter/tools/gn --runtime-mode=release --target-os=linux --linux-cpu=arm64 && \
+            ./flutter/tools/gn --runtime-mode=release --linux --linux-cpu=arm64 && \
             ninja -C out/host_release/gen_snapshot
         
+        # Set working directory to output
         WORKDIR /flutter/engine/src/out/host_release
+        
+        # Default command
         CMD ["/bin/bash"]
         EOF
 
