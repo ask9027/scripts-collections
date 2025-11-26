@@ -1,48 +1,28 @@
-name: Build gen_snapshot for ARM64
+name: Build gen_snapshot with Docker
 
 on:
   workflow_dispatch:
 
 jobs:
   build:
-    runs-on: ubuntu-24.04-xl
+    runs-on: ubuntu-latest
 
     steps:
-    - name: Install Dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y build-essential clang python3 git unzip ninja-build curl pkg-config libglib2.0-dev libgtk-3-dev libc6-dev-arm64-cross
+    - name: Checkout
+      uses: actions/checkout@v4
 
-    - name: Install depot_tools
-      run: |
-        git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git ~/depot_tools
-        echo "PATH=$PATH:$HOME/depot_tools" >> $GITHUB_ENV
+    - name: Build Docker Image
+      run: docker build -t gen_snapshot_builder -f Dockerfile.gen_snapshot .
 
-    - name: Clone Flutter Engine
+    - name: Extract gen_snapshot
       run: |
-        git clone https://github.com/flutter/engine.git flutter
-        cd flutter
-        git checkout stable
-
-    - name: Configure gclient (minimal sync)
-      run: |
-        cd flutter
-        cp tools/gn/.gclient .gclient
-        sed -i 's/deps_os/#deps_os/g' .gclient
-        gclient sync --no-history --shallow --force --with_branch_heads
-
-    - name: Generate GN build files (only Dart)
-      run: |
-        cd flutter/src
-        ./flutter/tools/gn --runtime-mode=release --no-android --arm64
-
-    - name: Build gen_snapshot
-      run: |
-        cd flutter/src
-        ninja -C out/host_release/gen_snapshot
+        docker create --name tmp gen_snapshot_builder
+        mkdir artifact
+        docker cp tmp:/flutter/src/out/host_release/gen_snapshot artifact/gen_snapshot_arm64
+        docker rm tmp
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
         name: gen_snapshot-arm64
-        path: flutter/src/out/host_release/gen_snapshot
+        path: artifact/gen_snapshot_arm64
