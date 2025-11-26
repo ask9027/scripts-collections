@@ -32,7 +32,7 @@ jobs:
 
       - name: Setup gclient & sync engine dependencies
         run: |
-          source $GITHUB_ENV
+          export PATH="$PATH:$HOME/depot_tools"
           cd flutter
           # Use the standard gclient config for flutter monorepo
           cp engine/scripts/standard.gclient .gclient
