@@ -1,39 +1,63 @@
-name: Build gen_snapshot ARM64 (Debian)
+name: Build gen_snapshot (Linux ARM64)
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
 
 jobs:
-  build:
-    runs-on: ubuntu-22.04
+  build-arm64:
+    name: Build gen_snapshot for Linux ARM64
+    runs-on: ubuntu-latest
 
     steps:
-    - name: Install base dependencies
-      run: |
-        sudo apt update
-        sudo apt install -y git curl python3 unzip pkg-config \
-          clang ninja-build build-essential \
-          gcc-aarch64-linux-gnu g++-aarch64-linux-gnu \
-          libc6-dev-arm64-cross
+      - name: Checkout flutter monorepo
+        uses: actions/checkout@v4
+        with:
+          repository: flutter/flutter
+          path: flutter
 
-    - name: Clone Flutter Engine (latest)
-      run: |
-        git clone https://github.com/flutter/engine.git --depth=1
-        cd engine
-        git submodule update --init --recursive
+      - name: Install Required Packages
+        run: |
+          sudo dpkg --add-architecture arm64
+          sudo apt update
+          sudo apt install -y \
+            clang ninja-build cmake python3 wget curl unzip \
+            g++-aarch64-linux-gnu build-essential pkg-config \
+            qemu-user
 
-    - name: Run gclient sync (needed for DEPS)
-      run: |
-        cd engine
-        ./flutter/tools/gn --target-cpu=arm64 --runtime-mode=release
+      - name: Clone depot_tools
+        run: |
+          git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git ~/depot_tools
+          echo 'export PATH="$PATH:$HOME/depot_tools"' >> $GITHUB_ENV
 
-    - name: Build gen_snapshot (ARM64)
-      run: |
-        cd engine/src
-        ninja -C out/linux_arm64_release gen_snapshot
+      - name: Setup gclient & sync engine dependencies
+        run: |
+          source $GITHUB_ENV
+          cd flutter
+          # Use the standard gclient config for flutter monorepo
+          cp engine/scripts/standard.gclient .gclient
+          gclient sync --with_branch_heads
 
-    - name: Upload gen_snapshot Artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: gen_snapshot-arm64
-        path: engine/out/linux_arm64_release/gen_snapshot
+      - name: Generate Build Config (GN)
+        run: |
+          source $GITHUB_ENV
+          cd flutter/engine
+          ./flutter/tools/gn \
+            --target-os=linux \
+            --linux-cpu=arm64 \
+            --runtime-mode=release \
+            --no-goma
+
+      - name: Build gen_snapshot
+        run: |
+          cd flutter/engine/out/linux_release_arm64
+          ninja gen_snapshot
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: gen_snapshot-linux-arm64
+          path: |
+            flutter/engine/out/linux_release_arm64/gen_snapshot
