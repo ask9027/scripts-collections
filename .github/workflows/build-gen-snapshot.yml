@@ -18,11 +18,11 @@ jobs:
         cat << 'EOF' > Dockerfile.gen_snapshot
         # Base image
         FROM ubuntu:22.04
-        
+
         ENV DEBIAN_FRONTEND=noninteractive
         ENV PATH="/depot_tools:${PATH}"
         
-        # Install build dependencies
+        # Install dependencies
         RUN apt-get update && apt-get install -y \
             build-essential clang python3-dev git curl zip unzip \
             ninja-build pkg-config libglib2.0-dev libgtk-3-dev \
@@ -38,15 +38,10 @@ jobs:
         # Clone Flutter monorepo (shallow)
         RUN git clone --depth 1 https://github.com/flutter/flutter.git /flutter
         
-        # Minimal gclient for engine-only dependencies
-        RUN cd /flutter && \
-            echo 'solutions = [{"name": "engine","url": "https://github.com/flutter/flutter.git","managed": False,"custom_deps": {}}]' > .gclient && \
-            # Skip Android SDK/NDK, Dart SDK CIPD downloads
-            gclient sync --no-history --shallow --with_branch_heads --nohooks
-        
-        # Build gen_snapshot for Linux ARM64 host
+        # Build gen_snapshot directly inside engine/src
         RUN cd /flutter/engine/src && \
-            ./flutter/tools/gn --runtime-mode=release --linux --linux-cpu=arm64 --no-android && \
+            # Linux ARM64 host build
+            ./flutter/tools/gn --runtime-mode=release --linux --linux-cpu=arm64 --no-android --no-fuchsia --no-dart-sdk && \
             ninja -C out/host_release/gen_snapshot
         
         WORKDIR /flutter/engine/src/out/host_release
