@@ -38,20 +38,18 @@ jobs:
         # Clone Flutter monorepo (shallow)
         RUN git clone --depth 1 https://github.com/flutter/flutter.git /flutter
         
-        # Minimal gclient sync to fetch engine dependencies (Skia, Dart, etc.)
+        # Minimal gclient for engine-only dependencies
         RUN cd /flutter && \
             echo 'solutions = [{"name": "engine","url": "https://github.com/flutter/flutter.git","managed": False,"custom_deps": {}}]' > .gclient && \
-            gclient sync --with_branch_heads --no-history --shallow
+            # Skip Android SDK/NDK, Dart SDK CIPD downloads
+            gclient sync --no-history --shallow --with_branch_heads --nohooks
         
         # Build gen_snapshot for Linux ARM64 host
         RUN cd /flutter/engine/src && \
-            ./flutter/tools/gn --runtime-mode=release --linux --linux-cpu=arm64 && \
+            ./flutter/tools/gn --runtime-mode=release --linux --linux-cpu=arm64 --no-android && \
             ninja -C out/host_release/gen_snapshot
         
-        # Set working directory to output
         WORKDIR /flutter/engine/src/out/host_release
-        
-        # Default command
         CMD ["/bin/bash"]
         EOF
 
