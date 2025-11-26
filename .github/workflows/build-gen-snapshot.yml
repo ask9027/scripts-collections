@@ -1,6 +1,8 @@
 name: Build gen_snapshot with Docker
 
 on:
+  push:
+    branches: ["main"]
   workflow_dispatch:
 
 jobs:
@@ -24,27 +26,32 @@ jobs:
           libc6-dev-arm64-cross gcc-aarch64-linux-gnu g++-aarch64-linux-gnu \
           ca-certificates && \
           rm -rf /var/lib/apt/lists/*
-
+        
         RUN git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git /depot_tools \
             && echo 'export PATH=$PATH:/depot_tools' >> ~/.bashrc
-
+        
         ENV PATH="/depot_tools:${PATH}"
-
-        RUN git clone https://github.com/flutter/engine.git /flutter \
-            && cd /flutter \
-            && git checkout stable
-
+        
+        # --- Important: Resolve engine revision dynamically ---
+        RUN git clone https://github.com/flutter/flutter.git /tmp/flutter && \
+            FLUTTER_ENGINE_HASH=$(cat /tmp/flutter/bin/internal/engine.version) && \
+            rm -rf /tmp/flutter && \
+            echo "Using engine revision: $FLUTTER_ENGINE_HASH" && \
+            git clone https://github.com/flutter/engine.git /flutter && \
+            cd /flutter && \
+            git checkout $FLUTTER_ENGINE_HASH
+        
         RUN cd /flutter && \
             cp tools/gn/.gclient .gclient && \
             sed -i 's/deps_os/#deps_os/g' .gclient && \
             gclient sync --no-history --shallow --with_branch_heads
-
+        
         RUN cd /flutter/src && \
             ./flutter/tools/gn --runtime-mode=release --no-android --arm64
-
+        
         RUN cd /flutter/src && \
             ninja -C out/host_release/gen_snapshot
-
+        
         WORKDIR /flutter/src/out/host_release
         CMD ["/bin/bash"]
         EOF
