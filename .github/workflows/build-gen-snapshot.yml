@@ -8,8 +8,46 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout
+    - name: Checkout repo
       uses: actions/checkout@v4
+
+    - name: Create Dockerfile.gen_snapshot
+      run: |
+        cat << 'EOF' > Dockerfile.gen_snapshot
+        FROM ubuntu:24.04
+
+        ENV DEBIAN_FRONTEND=noninteractive
+
+        RUN apt-get update && apt-get install -y \
+          build-essential clang python3-dev git curl zip unzip \
+          ninja-build pkg-config libglib2.0-dev libgtk-3-dev \
+          libc6-dev-arm64-cross gcc-aarch64-linux-gnu g++-aarch64-linux-gnu \
+          ca-certificates && \
+          rm -rf /var/lib/apt/lists/*
+
+        RUN git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git /depot_tools \
+            && echo 'export PATH=$PATH:/depot_tools' >> ~/.bashrc
+
+        ENV PATH="/depot_tools:${PATH}"
+
+        RUN git clone https://github.com/flutter/engine.git /flutter \
+            && cd /flutter \
+            && git checkout stable
+
+        RUN cd /flutter && \
+            cp tools/gn/.gclient .gclient && \
+            sed -i 's/deps_os/#deps_os/g' .gclient && \
+            gclient sync --no-history --shallow --with_branch_heads
+
+        RUN cd /flutter/src && \
+            ./flutter/tools/gn --runtime-mode=release --no-android --arm64
+
+        RUN cd /flutter/src && \
+            ninja -C out/host_release/gen_snapshot
+
+        WORKDIR /flutter/src/out/host_release
+        CMD ["/bin/bash"]
+        EOF
 
     - name: Build Docker Image
       run: docker build -t gen_snapshot_builder -f Dockerfile.gen_snapshot .
@@ -17,7 +55,7 @@ jobs:
     - name: Extract gen_snapshot
       run: |
         docker create --name tmp gen_snapshot_builder
-        mkdir artifact
+        mkdir -p artifact
         docker cp tmp:/flutter/src/out/host_release/gen_snapshot artifact/gen_snapshot_arm64
         docker rm tmp
 
