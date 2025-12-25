@@ -1,156 +1,144 @@
 #!/data/data/com.termux/files/usr/bin/bash
-set -u -e
 
-set_color() {
-    REDB='\033[41m'
-    RED='\033[31m'
-    GREEN='\033[32m'
-    BLUE='\033[34m'
-    CYAN='\033[36m'
-    RESET='\033[0m'
+#######################################
+# CONFIG
+#######################################
+ROOT_MODE=$(id -u)
+ROOT_CMD="su -c"
+EXTRA_OPTS=""
+server_pid=""
+
+#######################################
+# COLORS
+#######################################
+RED='\033[31m'
+GREEN='\033[32m'
+CYAN='\033[36m'
+YELLOW='\033[33m'
+RESET='\033[0m'
+
+trap cleanup INT TERM
+
+#######################################
+# CTRL+C HANDLER (STOP ONLY)
+#######################################
+cleanup() {
+    echo
+    echo -e "${RED}[!] Stopping Termux-X11...${RESET}"
+    get_server_pid
+    if [ -n "$server_pid" ]; then
+        if [ "$ROOT_MODE" -eq 0 ]; then
+            echo -e "${YELLOW}[✓] Killing server at $server_pid${RESET}"
+	    $ROOT_CMD "kill $server_pid" || true
+	    [ -n "${TMPDIR:-}" ] && $ROOT_CMD "rm -rf ${TMPDIR}/.X*"
+            $ROOT_CMD "setenforce 1" || true
+	    echo -e "${YELLOW}[+] Set Enforce to ${GREEN}$($ROOT_CMD getenforce)${RESET}"
+        else
+	    echo "non-root"
+            echo -e "${YELLOW}[✓] Killing server at $server_pid${RESET}"
+	    kill $server_pid || true
+	    [ -n "${TMPDIR:-}" ] && rm -rf "${TMPDIR}/.X*"
+        fi
+	echo -e "${GREEN}[✓] XServer stopped${RESET}"
+    else
+	echo -e "${GREEN}[✓] XServer already stopped${RESET}"
+    fi
+    exit 0
 }
 
-trap ctrl_c INT
+#######################################
+# CHECK RUNNING
+#######################################
 
-extra=""
-server_pid=""
-ROOT_MODE=$(id -u)
-export XKB_CONFIG_ROOT="/data/data/com.termux/files/usr/share/xkeyboard-config-2/"
+get_server_pid() {
+    if [ "$ROOT_MODE" -eq 0 ]; then
+        server_pid=$($ROOT_CMD "pidof com.termux-x11")
+    else
+	server_pid=$(pgrep com.termux-x11)
+    fi
+}
 
 check_server() {
-    if [ "$ROOT_MODE" -eq 0 ]; then
-        [ ! -z "$(pidof com.termux-x11)" ] && server_pid=$(pidof com.termux-x11)
-    else
-        [ ! -z "$(pgrep com.termux-x11)" ] && server_pid=$(pgrep com.termux-x11)
-    fi
+    get_server_pid
 
     if [ -n "$server_pid" ]; then
-        printf "${RED}XServer is already running at PID: ${server_pid}\n"
-        printf "${BLUE}To terminate, run: \`kill $server_pid\`${RESET}\n"
+        printf "${RED}[!] XServer is already running at PID: ${server_pid}\n"
+        printf "${CYAN}[-] To terminate, run: \`kill $server_pid\`${RESET}\n"
         exit 0
     else
-        echo "No XServer instance running."
+        echo "[✓] No XServer instance running."
     fi
 }
 
-ctrl_c() {
-    echo ""
-    if [ "$ROOT_MODE" -eq 0 ]; then
-        rm -rf ${TMPDIR}/.X*
-        printf "${REDB}Setting SELinux to enforcing: $(setenforce 1) $(getenforce)${RESET}\n"
-    else
-        if pgrep pulseaudio >/dev/null; then
-            printf "${RED}Stopping pulseaudio...${RESET}\n"
-            pulseaudio -k
-        fi
-    fi
-    printf "${GREEN}Exiting...${RESET}\n"
-}
-
-setup_audio() {
-    if ! command -v pulseaudio &>/dev/null; then
-        echo "Pulseaudio not found. Installing..."
-        apt update && apt install pulseaudio -y
-    fi
-}
-
-start_audio() {
-    setup_audio
-    if pgrep pulseaudio >/dev/null; then
-        printf "${RED}Stopping existing Pulseaudio...${RESET}\n"
-        pulseaudio -k
-    fi
-    printf "${CYAN}Starting Pulseaudio...${RESET}\n"
-    pulseaudio --start --load="module-native-protocol-tcp auth-ip-acl=127.0.0.1 auth-anonymous=1" --exit-idle-time=-1 -D
-}
-
-usage() {
-    printf "${CYAN}Usage: $0 [OPTIONS]\n"
-    echo "Options:"
-    echo " -h or --help       Display this Help message."
-    echo " -d or --debug      Enable verbose output."
-    echo " -s or --sound      Enable audio in Termux-X11 (not supported in root)."
-    echo " -x or --xserver    Pass X Server options."
-    printf " To use in root: 'su -c $PREFIX/bin/tmx' or 'su -c <path to script>'.${RESET}\n"
-}
-
-handle_options() {
-    while test $# -gt 0; do
-        case $1 in
-        -h | --help)
-            usage
-            exit 0
+#######################################
+# ARGUMENTS (FIXED)
+#######################################
+while [ $# -gt 0 ]; do
+    case "$1" in
+        -r|--root)
+            ROOT_MODE=0
             ;;
-        -s | --sound)
-            if [ "$ROOT_MODE" -ne 0 ]; then
-                start_audio
-            else
-                printf "${RED}Pulseaudio not supported in root.${RESET}\n"
-            fi
-            ;;
-        -d | --debug)
+        -d|--debug)
             export TERMUX_X11_DEBUG=1
-            echo "Verbose Enabled"
-            ;;
-        -c | --chroot)
-            shift
-            CHROOT="$1"
-            echo "CHROOT dir ${CHROOT}"
-	    export XKB_CONFIG_ROOT="${CHROOT}/usr/share/X11/xkb"
-            #shift
-            ;;
-        -x | --xserver)
-            shift
-            extra="$1"
-            printf "X Server Options: ${CYAN}${extra}${RESET}\n"
             ;;
         *)
-            echo "$1 is not a recognized option."
-            usage
-            exit 1
+            EXTRA_OPTS="$EXTRA_OPTS $1"
             ;;
-        esac
-        shift
-    done
-}
+    esac
+    shift
+done
 
-setup() {
-    local PREFIX="/data/data/com.termux/files/usr"
-    local loader="${PREFIX}/libexec/termux-x11/loader.apk"
-
-    if ! command -v termux-x11 &>/dev/null; then
-        echo "Termux-X11 not found. Installing..."
-        apt update && apt install termux-x11-* -y
-    fi
-
-    export CLASSPATH=$loader
-    unset LD_LIBRARY_PATH LD_PRELOAD
-    /system/bin/app_process -Xnoimage-dex2oat / --nice-name="com.termux-x11" com.termux.x11.Loader $extra
-}
-
-setup_root() {
-    printf "${REDB}SELinux is $(getenforce)${RESET}\n"
-    printf "${REDB}Setting SELinux to permissive: $(setenforce 0) $(getenforce)${RESET}\n"
-
-    export CLASSPATH="$(/system/bin/pm path com.termux.x11 | cut -d: -f2)"
-    /system/bin/app_process -Xnoimage-dex2oat / --nice-name="com.termux-x11" com.termux.x11.CmdEntryPoint $extra
-}
-
-startX11() {
-    printf "${GREEN}Starting Termux-x11${RESET}\n"
-    printf "${REDB}Clearing old logcat: $(logcat -c)${RESET}\n"
-
-    if [ "$ROOT_MODE" -eq 0 ]; then
-        echo "Running Termux-X11 as ROOT"
-        logcat -c
-        setup_root
-    else
-        echo "Running Termux-X11"
-        setup
-    fi
-}
-
-set_color
-handle_options "$@"
 check_server
-startX11
+
+#######################################
+# START X11 (NO FORCE-STOP HERE)
+#######################################
+start_x11() {
+    APK_PATH="/data/data/com.termux/files/usr/libexec/termux-x11/loader.apk"
+    if [ ! -f "$APK_PATH" ]; then
+        echo -e "${RED}[!] Termux-X11 not installed${RESET}"
+        exit 1
+    fi
+
+    export CLASSPATH="$APK_PATH"
+    unset LD_LIBRARY_PATH LD_PRELOAD
+
+    echo -e "${GREEN}[✓] Starting Termux-X11${RESET}"
+
+    /system/bin/app_process -Xnoimage-dex2oat / \
+        --nice-name=com.termux-x11 \
+        com.termux.x11.Loader $EXTRA_OPTS
+}
+
+start_x11_root() {
+    APK_PATH="$(pm path com.termux.x11 | cut -d: -f2)"
+
+    if [ -z "$APK_PATH" ]; then
+        echo -e "${RED}[!] Termux-X11 not installed${RESET}"
+        exit 1
+    fi
+
+    export CLASSPATH="$APK_PATH"
+
+    echo -e "${GREEN}[✓] Starting Termux-X11${RESET}"
+
+    exec /system/bin/app_process -Xnoimage-dex2oat / \
+        --nice-name=com.termux-x11 \
+        com.termux.x11.CmdEntryPoint $EXTRA_OPTS
+}
+
+#######################################
+# MAIN
+#######################################
+logcat -c || true
+
+if [ "$ROOT_MODE" -eq 0 ]; then
+    echo -e "${CYAN}[+] Running as ROOT${RESET}"
+    $ROOT_CMD "setenforce 0"
+    echo -e "${YELLOW}[✓] Set Enforce to ${RED}$($ROOT_CMD getenforce)${RESET}"
+    $ROOT_CMD "$(declare -f start_x11_root); start_x11_root"
+else
+    echo -e "${CYAN}[+] Running as TERMUX USER${RESET}"
+    start_x11
+fi
+
