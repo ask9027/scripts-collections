@@ -24,24 +24,23 @@ trap cleanup INT TERM
 #######################################
 cleanup() {
     echo
-    echo -e "${RED}[!] Stopping Termux-X11...${RESET}"
+    printf "${RED}[!] Stopping Termux-X11...${RESET}"; echo
     get_server_pid
     if [ -n "$server_pid" ]; then
         if [ "$ROOT_MODE" -eq 0 ]; then
-            echo -e "${YELLOW}[✓] Killing server at $server_pid${RESET}"
+            printf "${YELLOW}[!] Killing server at $server_pid${RESET}"; echo
 	    $ROOT_CMD "kill $server_pid" || true
 	    [ -n "${TMPDIR:-}" ] && $ROOT_CMD "rm -rf ${TMPDIR}/.X*"
             $ROOT_CMD "setenforce 1" || true
-	    echo -e "${YELLOW}[+] Set Enforce to ${GREEN}$($ROOT_CMD getenforce)${RESET}"
+	    printf "${YELLOW}[✓] Set back Enforce to ${GREEN}$($ROOT_CMD getenforce)${RESET}"; echo
         else
-	    echo "non-root"
-            echo -e "${YELLOW}[✓] Killing server at $server_pid${RESET}"
+            printf "${YELLOW}[!] Killing server at $server_pid${RESET}"; echo
 	    kill $server_pid || true
 	    [ -n "${TMPDIR:-}" ] && rm -rf "${TMPDIR}/.X*"
         fi
-	echo -e "${GREEN}[✓] XServer stopped${RESET}"
+	printf "${GREEN}[✓] XServer stopped${RESET}"; echo
     else
-	echo -e "${GREEN}[✓] XServer already stopped${RESET}"
+	printf "${GREEN}[✓] XServer already stopped${RESET}"; echo
     fi
     exit 0
 }
@@ -62,11 +61,11 @@ check_server() {
     get_server_pid
 
     if [ -n "$server_pid" ]; then
-        printf "${RED}[!] XServer is already running at PID: ${server_pid}\n"
-        printf "${CYAN}[-] To terminate, run: \`kill $server_pid\`${RESET}\n"
+        printf "${RED}[!] XServer is already running at PID: ${server_pid}\n"; echo
+        printf "${CYAN}[-] To terminate, run: \`kill $server_pid\`${RESET}\n"; echo
         exit 0
     else
-        echo "[✓] No XServer instance running."
+        printf "${GREEN}[✓] No XServer instance running.${RESET}"; echo
     fi
 }
 
@@ -96,35 +95,31 @@ check_server
 start_x11() {
     APK_PATH="/data/data/com.termux/files/usr/libexec/termux-x11/loader.apk"
     if [ ! -f "$APK_PATH" ]; then
-        echo -e "${RED}[!] Termux-X11 not installed${RESET}"
+        printf "${RED}[!] Termux-X11 not installed${RESET}"; echo
         exit 1
     fi
 
     export CLASSPATH="$APK_PATH"
     unset LD_LIBRARY_PATH LD_PRELOAD
 
-    echo -e "${GREEN}[✓] Starting Termux-X11${RESET}"
+    printf "${GREEN}[✓] Starting Termux-X11${RESET}"; echo
 
-    /system/bin/app_process -Xnoimage-dex2oat / \
-        --nice-name=com.termux-x11 \
-        com.termux.x11.Loader $EXTRA_OPTS
+    /system/bin/app_process -Xnoimage-dex2oat / --nice-name=com.termux-x11 com.termux.x11.Loader $EXTRA_OPTS
 }
 
 start_x11_root() {
-    APK_PATH="$(pm path com.termux.x11 | cut -d: -f2)"
+    APK_PATH=$($ROOT_CMD "pm path com.termux.x11 | cut -d: -f2")
 
     if [ -z "$APK_PATH" ]; then
-        echo -e "${RED}[!] Termux-X11 not installed${RESET}"
+        printf "${RED}[!] Termux-X11 not installed${RESET}"; echo
         exit 1
     fi
 
     export CLASSPATH="$APK_PATH"
 
-    echo -e "${GREEN}[✓] Starting Termux-X11${RESET}"
+    printf "${GREEN}[✓] Starting Termux-X11${RESET}"; echo
 
-    exec /system/bin/app_process -Xnoimage-dex2oat / \
-        --nice-name=com.termux-x11 \
-        com.termux.x11.CmdEntryPoint $EXTRA_OPTS
+    $ROOT_CMD "/system/bin/app_process -Xnoimage-dex2oat / --nice-name=com.termux-x11 com.termux.x11.CmdEntryPoint $EXTRA_OPTS"
 }
 
 #######################################
@@ -133,12 +128,11 @@ start_x11_root() {
 logcat -c || true
 
 if [ "$ROOT_MODE" -eq 0 ]; then
-    echo -e "${CYAN}[+] Running as ROOT${RESET}"
+    printf "${CYAN}[+] Running as ROOT${RESET}"; echo
     $ROOT_CMD "setenforce 0"
-    echo -e "${YELLOW}[✓] Set Enforce to ${RED}$($ROOT_CMD getenforce)${RESET}"
-    $ROOT_CMD "$(declare -f start_x11_root); start_x11_root"
+    printf "${YELLOW}[✓] Set Enforce to ${RED}$($ROOT_CMD getenforce)${RESET}"; echo
+    start_x11_root
 else
-    echo -e "${CYAN}[+] Running as TERMUX USER${RESET}"
+    printf "${CYAN}[+] Running as TERMUX USER${RESET}"; echo
     start_x11
 fi
-
