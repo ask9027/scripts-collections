@@ -93,12 +93,18 @@ export XKB_CONFIG_ROOT="/data/data/com.termux/files/usr/share/xkeyboard-config-2
 #######################################
 # SIGNAL HANDLING
 #######################################
+_CLEANED_UP=0
 cleanup() {
+    if [ "$_CLEANED_UP" -eq 1 ]; then
+        return
+    fi
+    _CLEANED_UP=1
     echo
     log_warn "Stopping Termux-X11"
+    TMP="${TMPDIR:-$PREFIX/tmp}"
+    rm -rf ${TMP}/.X* || true
 
     if [ "$ROOT_MODE" -eq 0 ]; then
-        rm -rf "${TMPDIR:-/tmp}/.X*" || true
         setenforce 1 || true
         log_ok "SELinux restored → ${BOLD}${GREEN}Enforcing${RESET} (secure)"
     else
@@ -111,7 +117,8 @@ cleanup() {
     log_ok "Exit complete"
     exit 0
 }
-trap cleanup INT
+
+trap cleanup INT TERM EXIT
 
 #######################################
 # CHECK RUNNING SERVER (UNCHANGED)
